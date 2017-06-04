@@ -38,6 +38,7 @@
 		<module>spring-boot-starter-data-mongodb-reactive</module>
 		<module>spring-boot-starter-data-neo4j</module>
 		<module>spring-boot-starter-data-redis</module>
+		<module>spring-boot-starter-data-redis-reactive</module>
 		<module>spring-boot-starter-data-rest</module>
 		<module>spring-boot-starter-data-solr</module>
 		<module>spring-boot-starter-freemarker</module>
@@ -48,6 +49,7 @@
 		<module>spring-boot-starter-jersey</module>
 		<module>spring-boot-starter-jetty</module>
 		<module>spring-boot-starter-jooq</module>
+		<module>spring-boot-starter-json</module>
 		<module>spring-boot-starter-jta-atomikos</module>
 		<module>spring-boot-starter-jta-bitronix</module>
 		<module>spring-boot-starter-jta-narayana</module>
@@ -58,6 +60,7 @@
 		<module>spring-boot-starter-mustache</module>
 		<module>spring-boot-starter-actuator</module>
 		<module>spring-boot-starter-parent</module>
+		<module>spring-boot-starter-quartz</module>
 		<module>spring-boot-starter-reactor-netty</module>
 		<module>spring-boot-starter-security</module>
 		<module>spring-boot-starter-social-facebook</module>

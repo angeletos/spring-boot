@@ -29,7 +29,6 @@ import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.session.ExpiringSession;
 import org.springframework.session.MapSessionRepository;
 import org.springframework.session.SessionRepository;
 import org.springframework.session.web.http.SessionRepositoryFilter;
@@ -53,9 +52,17 @@ public class SessionAutoConfigurationTests extends AbstractSessionAutoConfigurat
 	@Test
 	public void contextFailsIfStoreTypeNotSet() {
 		this.thrown.expect(BeanCreationException.class);
-		this.thrown.expectMessage("No session repository could be auto-configured");
-		this.thrown.expectMessage("session store type is 'null'");
+		this.thrown.expectMessage("No Spring Session store is configured");
+		this.thrown.expectMessage("set the 'spring.session.store-type' property");
 		load();
+	}
+
+	@Test
+	public void contextFailsIfStoreTypeNotAvailable() {
+		this.thrown.expect(BeanCreationException.class);
+		this.thrown.expectMessage("No session repository could be auto-configured");
+		this.thrown.expectMessage("session store type is 'jdbc'");
+		load("spring.session.store-type=jdbc");
 	}
 
 	@Test
@@ -66,7 +73,7 @@ public class SessionAutoConfigurationTests extends AbstractSessionAutoConfigurat
 
 	@Test
 	public void backOffIfSessionRepositoryIsPresent() {
-		load(Collections.<Class<?>>singletonList(SessionRepositoryConfiguration.class),
+		load(Collections.singletonList(SessionRepositoryConfiguration.class),
 				"spring.session.store-type=redis");
 		MapSessionRepository repository = validateSessionRepository(
 				MapSessionRepository.class);
@@ -96,14 +103,6 @@ public class SessionAutoConfigurationTests extends AbstractSessionAutoConfigurat
 		load("spring.session.store-type=hash-map", "spring.session.timeout=3000");
 	}
 
-	@Test
-	public void validationFailsIfSessionRepositoryIsNotConfigured() {
-		this.thrown.expect(BeanCreationException.class);
-		this.thrown.expectMessage("No session repository could be auto-configured");
-		this.thrown.expectMessage("session store type is 'JDBC'");
-		load("spring.session.store-type=jdbc");
-	}
-
 	@SuppressWarnings("unchecked")
 	@Test
 	public void filterIsRegisteredWithAsyncErrorAndRequestDispatcherTypes() {
@@ -121,9 +120,8 @@ public class SessionAutoConfigurationTests extends AbstractSessionAutoConfigurat
 	static class SessionRepositoryConfiguration {
 
 		@Bean
-		public SessionRepository<?> mySessionRepository() {
-			return new MapSessionRepository(
-					Collections.<String, ExpiringSession>emptyMap());
+		public MapSessionRepository mySessionRepository() {
+			return new MapSessionRepository(Collections.emptyMap());
 		}
 
 	}

@@ -44,13 +44,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPInputStream;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
 import javax.servlet.GenericServlet;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
@@ -59,7 +61,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
-import org.apache.catalina.webresources.TomcatURLStreamHandlerFactory;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.InputStreamFactory;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -73,9 +74,7 @@ import org.apache.http.ssl.TrustStrategy;
 import org.apache.jasper.EmbeddedServletOptions;
 import org.apache.jasper.servlet.JspServlet;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -92,6 +91,7 @@ import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.server.Ssl.ClientAuth;
 import org.springframework.boot.web.server.SslStoreProvider;
 import org.springframework.boot.web.server.WebServer;
+import org.springframework.boot.web.server.WebServerException;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -101,13 +101,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.SocketUtils;
 import org.springframework.util.StreamUtils;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -124,6 +122,7 @@ import static org.mockito.Mockito.verify;
  * @author Phillip Webb
  * @author Greg Turnquist
  * @author Andy Wilkinson
+ * @author Raja Kolli
  */
 public abstract class AbstractServletWebServerFactoryTests {
 
@@ -139,14 +138,6 @@ public abstract class AbstractServletWebServerFactoryTests {
 	protected WebServer webServer;
 
 	private final HttpClientContext httpClientContext = HttpClientContext.create();
-
-	@BeforeClass
-	@AfterClass
-	public static void uninstallUrlStreamHandlerFactory() {
-		ReflectionTestUtils.setField(TomcatURLStreamHandlerFactory.class, "instance",
-				null);
-		ReflectionTestUtils.setField(URL.class, "factory", null);
-	}
 
 	@After
 	public void tearDown() {
@@ -209,28 +200,6 @@ public abstract class AbstractServletWebServerFactoryTests {
 		String response = getResponse(getLocalUrl(port, "/hello"));
 		throw new RuntimeException(
 				"Unexpected response on port " + port + " : " + response);
-	}
-
-	@Test
-	public void restartWithKeepAlive() throws Exception {
-		AbstractServletWebServerFactory factory = getFactory();
-		this.webServer = factory.getWebServer(exampleServletRegistration());
-		this.webServer.start();
-		HttpComponentsAsyncClientHttpRequestFactory clientHttpRequestFactory = new HttpComponentsAsyncClientHttpRequestFactory();
-		ListenableFuture<ClientHttpResponse> response1 = clientHttpRequestFactory
-				.createAsyncRequest(new URI(getLocalUrl("/hello")), HttpMethod.GET)
-				.executeAsync();
-		assertThat(response1.get(10, TimeUnit.SECONDS).getRawStatusCode()).isEqualTo(200);
-
-		this.webServer.stop();
-		this.webServer = factory.getWebServer(exampleServletRegistration());
-		this.webServer.start();
-
-		ListenableFuture<ClientHttpResponse> response2 = clientHttpRequestFactory
-				.createAsyncRequest(new URI(getLocalUrl("/hello")), HttpMethod.GET)
-				.executeAsync();
-		assertThat(response2.get(10, TimeUnit.SECONDS).getRawStatusCode()).isEqualTo(200);
-		clientHttpRequestFactory.destroy();
 	}
 
 	@Test
@@ -980,6 +949,38 @@ public abstract class AbstractServletWebServerFactoryTests {
 		assertThat(options.getDevelopment()).isEqualTo(false);
 	}
 
+	@Test
+	public void faultyFilterCausesStartFailure() throws Exception {
+		AbstractServletWebServerFactory factory = getFactory();
+		factory.addInitializers(new ServletContextInitializer() {
+
+			@Override
+			public void onStartup(ServletContext servletContext) throws ServletException {
+				servletContext.addFilter("faulty", new Filter() {
+
+					@Override
+					public void init(FilterConfig filterConfig) throws ServletException {
+						throw new ServletException("Faulty filter");
+					}
+
+					@Override
+					public void doFilter(ServletRequest request, ServletResponse response,
+							FilterChain chain) throws IOException, ServletException {
+						chain.doFilter(request, response);
+					}
+
+					@Override
+					public void destroy() {
+					}
+
+				});
+			}
+
+		});
+		this.thrown.expect(WebServerException.class);
+		factory.getWebServer().start();
+	}
+
 	protected abstract void addConnector(int port,
 			AbstractServletWebServerFactory factory);
 
@@ -1058,12 +1059,8 @@ public abstract class AbstractServletWebServerFactoryTests {
 
 	protected String getResponse(String url, HttpMethod method, String... headers)
 			throws IOException, URISyntaxException {
-		ClientHttpResponse response = getClientResponse(url, method, headers);
-		try {
+		try (ClientHttpResponse response = getClientResponse(url, method, headers)) {
 			return StreamUtils.copyToString(response.getBody(), Charset.forName("UTF-8"));
-		}
-		finally {
-			response.close();
 		}
 	}
 
@@ -1076,13 +1073,9 @@ public abstract class AbstractServletWebServerFactoryTests {
 	protected String getResponse(String url, HttpMethod method,
 			HttpComponentsClientHttpRequestFactory requestFactory, String... headers)
 					throws IOException, URISyntaxException {
-		ClientHttpResponse response = getClientResponse(url, method, requestFactory,
-				headers);
-		try {
+		try (ClientHttpResponse response = getClientResponse(url, method, requestFactory,
+				headers)) {
 			return StreamUtils.copyToString(response.getBody(), Charset.forName("UTF-8"));
-		}
-		finally {
-			response.close();
 		}
 	}
 
@@ -1196,13 +1189,9 @@ public abstract class AbstractServletWebServerFactoryTests {
 			NoSuchAlgorithmException, CertificateException {
 		KeyStore keyStore = KeyStore.getInstance("JKS");
 		Resource resource = new ClassPathResource("test.jks");
-		InputStream inputStream = resource.getInputStream();
-		try {
+		try (InputStream inputStream = resource.getInputStream()) {
 			keyStore.load(inputStream, "secret".toCharArray());
 			return keyStore;
-		}
-		finally {
-			inputStream.close();
 		}
 	}
 

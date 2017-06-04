@@ -36,8 +36,8 @@ public class ServletWebServerInitializedEvent extends WebServerInitializedEvent 
 
 	private final ServletWebServerApplicationContext applicationContext;
 
-	public ServletWebServerInitializedEvent(
-			ServletWebServerApplicationContext applicationContext, WebServer source) {
+	public ServletWebServerInitializedEvent(WebServer source,
+			ServletWebServerApplicationContext applicationContext) {
 		super(source);
 		this.applicationContext = applicationContext;
 	}

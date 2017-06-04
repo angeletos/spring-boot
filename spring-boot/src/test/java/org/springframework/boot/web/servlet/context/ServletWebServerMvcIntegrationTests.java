@@ -17,13 +17,9 @@
 package org.springframework.boot.web.servlet.context;
 
 import java.net.URI;
-import java.net.URL;
 import java.nio.charset.Charset;
 
-import org.apache.catalina.webresources.TomcatURLStreamHandlerFactory;
 import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import org.springframework.boot.web.embedded.jetty.JettyServletWebServerFactory;
@@ -42,7 +38,6 @@ import org.springframework.http.client.ClientHttpRequest;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Controller;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -70,14 +65,6 @@ public class ServletWebServerMvcIntegrationTests {
 		catch (Exception ex) {
 			// Ignore
 		}
-	}
-
-	@BeforeClass
-	@AfterClass
-	public static void uninstallUrlStreamHandlerFactory() {
-		ReflectionTestUtils.setField(TomcatURLStreamHandlerFactory.class, "instance",
-				null);
-		ReflectionTestUtils.setField(URL.class, "factory", null);
 	}
 
 	@Test
@@ -114,14 +101,10 @@ public class ServletWebServerMvcIntegrationTests {
 		ClientHttpRequest request = clientHttpRequestFactory.createRequest(new URI(
 				"http://localhost:" + context.getWebServer().getPort() + resourcePath),
 				HttpMethod.GET);
-		ClientHttpResponse response = request.execute();
-		try {
+		try (ClientHttpResponse response = request.execute()) {
 			String actual = StreamUtils.copyToString(response.getBody(),
 					Charset.forName("UTF-8"));
 			assertThat(actual).isEqualTo("Hello World");
-		}
-		finally {
-			response.close();
 		}
 	}
 

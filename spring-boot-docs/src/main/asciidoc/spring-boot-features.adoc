@@ -2829,7 +2829,7 @@ Here's the algorithm for choosing a specific implementation:
   DBCP2 is available we will use it.
 
 If you use the `spring-boot-starter-jdbc` or `spring-boot-starter-data-jpa`
-'`starters`' you will automatically get a dependency to `tomcat-jdbc`.
+'`starters`' you will automatically get a dependency to `HikariCP`.
 
 NOTE: You can bypass that algorithm completely and specify the connection pool to use via
 the `spring.datasource.type` property. This is especially important if you are running
@@ -2931,6 +2931,18 @@ you can `@Autowire` them directly into your own beans:
 
 	}
 ----
+
+You can customize some properties of the template using the `spring.jdbc.template.*`
+properties:
+
+[source,properties,indent=0]
+----
+	spring.jdbc.template.max-rows=500
+----
+
+TIP: The `NamedParameterJdbcTemplate` reuses the same `JdbcTemplate` instance behind the
+scene. If more than one `JdbcTemplate` is defined and no primary candidate exists, the
+`NamedParameterJdbcTemplate` is not auto-configured.
 
 
 
@@ -3213,15 +3225,17 @@ You can then use the `DSLContext` to construct your queries:
 
 
 
+==== jOOQ SQL dialect
+Spring Boot determines the SQL dialect to use for your datasource unless the
+`spring.jooq.sql-dialect` property has been configured. If the dialect couldn't be
+detected, `DEFAULT` is used.
+
+NOTE: Spring Boot can only auto-configure dialects supported by the open source version of
+jOOQ.
+
+
+
 ==== Customizing jOOQ
-You can customize the SQL dialect used by jOOQ by setting `spring.jooq.sql-dialect` in
-your `application.properties`. For example, to specify Postgres you would add:
-
-[source,properties,indent=0]
-----
-	spring.jooq.sql-dialect=Postgres
-----
-
 More advanced customizations can be achieved by defining your own `@Bean` definitions
 which will be used when the jOOQ `Configuration` is created. You can define beans for
 the following jOOQ Types:
@@ -3262,10 +3276,14 @@ http://projects.spring.io/spring-data[projects.spring.io/spring-data].
 === Redis
 http://redis.io/[Redis] is a cache, message broker and richly-featured key-value store.
 Spring Boot offers basic auto-configuration for the
-https://github.com/xetorthio/jedis/[Jedis] client library and abstractions on top of it
-provided by https://github.com/spring-projects/spring-data-redis[Spring Data Redis]. There
-is a `spring-boot-starter-data-redis` '`Starter`' for collecting the dependencies in a
-convenient way.
+https://github.com/xetorthio/jedis/[Jedis] and https://github.com/mp911de/lettuce/[Lettuce]
+client library and abstractions on top of it provided by
+https://github.com/spring-projects/spring-data-redis[Spring Data Redis].
+
+There is a `spring-boot-starter-data-redis` '`Starter`' for collecting the dependencies in
+a convenient way that uses https://github.com/xetorthio/jedis/[Jedis] by default. If you
+are building a reactive application, the `spring-boot-starter-data-redis-reactive`
+'`Starter`' will get you going.
 
 
 
@@ -4003,7 +4021,9 @@ your custom attribute types or object classes.
 The Spring Framework provides support for transparently adding caching to an application.
 At its core, the abstraction applies caching to methods, reducing thus the number of
 executions based on the information available in the cache. The caching logic is applied
-transparently, without any interference to the invoker.
+transparently, without any interference to the invoker.  Spring Boot auto-configures the
+cache infrastructure as long as the caching support is enabled via the `@EnableCaching`
+annotation.
 
 NOTE: Check the {spring-reference}/#cache[relevant section] of the Spring Framework
 reference for more details.
@@ -4013,14 +4033,13 @@ relevant annotation to its method:
 
 [source,java,indent=0]
 ----
-	import javax.cache.annotation.CacheResult;
-
+    import org.springframework.cache.annotation.Cacheable
 	import org.springframework.stereotype.Component;
 
 	@Component
 	public class MathService {
 
-		@CacheResult
+		@Cacheable("piDecimals")
 		public int computePiDecimal(int i) {
 			// ...
 		}
@@ -4028,29 +4047,37 @@ relevant annotation to its method:
 	}
 ----
 
-NOTE: You can either use the standard JSR-107 (JCache) annotations or Spring's own
-caching annotations transparently. We strongly advise you however to not mix and match
-them.
+This example demonstrates the use of caching on a potentially costly operation. Before
+invoking `computePiDecimal`, the abstraction will look for an entry in the `piDecimals`
+cache matching the `i` argument. If an entry is found, the content in the cache is
+immediately returned to the caller and the method is not invoked. Otherwise, the method is
+invoked and the cache is updated before returning the value.
+
+NOTE: You can also use the standard JSR-107 (JCache) annotations (e.g. `@CacheResult`)
+transparently. We strongly advise you however to not mix and match them.
+
+If you do not add any specific cache library, Spring Boot will auto-configure a
+<<boot-features-caching-provider-simple,Simple provider>> that uses concurrent maps in
+memory. When a cache is required (i.e. `piDecimals` in the example above), this provider
+will create it on-the-fly for you. The simple provider is not really recommended for
+production usage, but it's great for getting started and making sure that you understand
+the features. When you have made up your mind about the cache provider to use, please make
+sure to read its documentation to figure out how to configure the caches that your
+application uses. Practically all providers require you to explicitly configure every
+cache that you use in the application. Some offer a way to customize the default caches
+defined by the `spring.cache.cache-names` property.
 
 TIP: It is also possible to {spring-reference}/#cache-annotations-put[update] or
 {spring-reference}/#cache-annotations-evict[evict] data from the cache transparently.
 
+NOTE: If you are using the cache infrastructure with beans that are not interface-based,
+make sure to enable the `proxyTargetClass` attribute of `@EnableCaching`.
 
 
 === Supported cache providers
 The cache abstraction does not provide an actual store and relies on abstraction
 materialized by the `org.springframework.cache.Cache` and
-`org.springframework.cache.CacheManager` interfaces. Spring Boot auto-configures a
-suitable `CacheManager` according to the implementation as long as the caching support is
-enabled via the `@EnableCaching` annotation.
-
-NOTE: If you are using the cache infrastructure with beans that are not interface-based,
-make sure to enable the `proxyTargetClass` attribute of `@EnableCaching`.
-
-TIP: Use the `spring-boot-starter-cache` '`Starter`' to quickly add basic caching
-dependencies. The starter brings `spring-context-support`: if you are adding dependencies
-manually, you must include it if you intend to use the JCache, EhCache 2.x or Guava
-support.
+`org.springframework.cache.CacheManager` interfaces.
 
 If you haven't defined a bean of type `CacheManager` or a `CacheResolver` named
 `cacheResolver` (see `CachingConfigurer`), Spring Boot tries to detect the following
@@ -4071,9 +4098,15 @@ TIP: It is also possible to _force_ the cache provider to use via the `spring.ca
 property. Use this property if you need to <<boot-features-caching-provider-none,disable
 caching altogether>> in certain environment (e.g. tests).
 
+TIP: Use the `spring-boot-starter-cache` '`Starter`' to quickly add basic caching
+dependencies. The starter brings in `spring-context-support`: if you are adding
+dependencies manually, you must include `spring-context-support` in order to use the
+JCache, EhCache 2.x or Guava support.
+
 If the `CacheManager` is auto-configured by Spring Boot, you can further tune its
 configuration before it is fully initialized by exposing a bean implementing the
-`CacheManagerCustomizer` interface. The following sets the cache names to use.
+`CacheManagerCustomizer` interface. The following sets a flag to say that null
+values should be passed down to the underlying map.
 
 [source,java,indent=0]
 ----
@@ -4082,7 +4115,7 @@ configuration before it is fully initialized by exposing a bean implementing the
 		return new CacheManagerCustomizer<ConcurrentMapCacheManager>() {
 			@Override
 			public void customize(ConcurrentMapCacheManager cacheManager) {
-				cacheManager.setCacheNames(Arrays.asList("one", "two"));
+				cacheManager.setAllowNullValues(false);
 			}
 		};
 	}
@@ -4090,8 +4123,9 @@ configuration before it is fully initialized by exposing a bean implementing the
 
 [NOTE]
 ====
-In the example above, a `ConcurrentMapCacheManager` is expected to be configured. If that
-is not the case, the customizer won't be invoked at all. You can have as many customizers
+In the example above, an auto-configured `ConcurrentMapCacheManager` is expected. If that
+is not the case (either you provided your own config or a different cache provider was
+auto-configured), the customizer won't be invoked at all. You can have as many customizers
 as you want and you can also order them as usual using `@Order` or `Ordered`.
 ====
 
@@ -4100,7 +4134,8 @@ as you want and you can also order them as usual using `@Order` or `Ordered`.
 [[boot-features-caching-provider-generic]]
 ==== Generic
 Generic caching is used if the context defines _at least_ one
-`org.springframework.cache.Cache` bean, a `CacheManager` wrapping them is configured.
+`org.springframework.cache.Cache` bean. A `CacheManager` wrapping all beans of that type
+is created.
 
 
 
@@ -4288,10 +4323,20 @@ auto-configuration.
 
 [[boot-features-caching-provider-simple]]
 ==== Simple
-If none of these options worked out, a simple implementation using `ConcurrentHashMap`
-as cache store is configured. This is the default if no caching library is present in
-your application.
+If none of the other providers can be found, a simple implementation using a
+`ConcurrentHashMap` as cache store is configured. This is the default if no caching
+library is present in your application. Caches are created on-the-fly by default but you
+can restrict the list of available caches using the `cache-names` property. For instance,
+if you want only `foo` and `bar` caches:
 
+[source,properties,indent=0]
+----
+    spring.cache.cache-names=foo,bar
+----
+
+If you do this and your application uses a cache not listed then it will fail at runtime
+when the cache is needed, but not on startup. This is similar to the way the "real" cache
+providers behave if you use an undeclared cache.
 
 
 [[boot-features-caching-provider-none]]
@@ -4622,9 +4667,10 @@ the broker connection is lost. Retries are disabled by default.
 ==== Receiving a message
 When the Rabbit infrastructure is present, any bean can be annotated with
 `@RabbitListener` to create a listener endpoint. If no `RabbitListenerContainerFactory`
-has been defined, a default one is configured automatically.  If a `MessageConverter` or
-`MessageRecoverer` beans are defined, they are associated automatically to the default
-factory.
+has been defined, a default `SimpleRabbitListenerContainerFactory` is configured
+automatically and you can switch to a direct container using the
+`spring.rabbitmq.listener.type` property.  If a `MessageConverter` or `MessageRecoverer`
+beans are defined, they are associated automatically to the default factory.
 
 The following component creates a listener endpoint on the `someQueue` queue:
 
@@ -4646,9 +4692,13 @@ for more details.
 
 If you need to create more `RabbitListenerContainerFactory` instances or if you want to
 override the default, Spring Boot provides a
-`SimpleRabbitListenerContainerFactoryConfigurer` that you can use to initialize a
-`SimpleRabbitListenerContainerFactory` with the same settings as the one that is
-auto-configured.
+`SimpleRabbitListenerContainerFactoryConfigurer` and
+`DirectRabbitListenerContainerFactoryConfigurer` that you can use to initialize a
+`SimpleRabbitListenerContainerFactory` and `DirectRabbitListenerContainerFactory` with the
+same settings as the one used by the auto-configuration.
+
+TIP: It doesn't matter which container type you've chosen, those two beans are exposed by
+the auto-configuration.
 
 For instance, the following exposes another factory that uses a specific
 `MessageConverter`:
@@ -4916,7 +4966,7 @@ to avoid having a thread blocked by an unresponsive mail server:
 
 [source,properties,indent=0]
 ----
-	spring.mail.properties.mail.smtp.connecttimeout=5000
+	spring.mail.properties.mail.smtp.connectiontimeout=5000
 	spring.mail.properties.mail.smtp.timeout=3000
 	spring.mail.properties.mail.smtp.writetimeout=5000
 ----
@@ -5080,9 +5130,8 @@ provide good examples of how to write XA wrappers.
 [[boot-features-hazelcast]]
 == Hazelcast
 
-If hazelcast is on the classpath, Spring Boot will auto-configure an `HazelcastInstance`
-that you can inject in your application. The `HazelcastInstance` is only created if a
-configuration is found.
+If hazelcast is on the classpath and a suitable configuration is found, Spring Boot
+will auto-configure an `HazelcastInstance` that you can inject in your application.
 
 You can define a `com.hazelcast.config.Config` bean and we'll use that. If your
 configuration defines an instance name, we'll try to locate an existing instance rather
@@ -5101,10 +5150,83 @@ classpath. We also check if the `hazelcast.config` system property is set. Check
 http://docs.hazelcast.org/docs/latest/manual/html-single/[Hazelcast documentation] for
 more details.
 
+If `hazelcast-client` is present on the classpath, Spring Boot will first attempt to
+create a client with similar rules as above, that is:
+
+* The presence of a `com.hazelcast.client.config.ClientConfig` bean
+* A configuration file defined by the `spring.hazelcast.config` property
+* The presence of the `hazelcast.client.config` system property
+* A `hazelcast-client.xml` in the working directory or at the root of the classpath
+
 NOTE: Spring Boot also has an
 <<boot-features-caching-provider-hazelcast,explicit caching support for Hazelcast>>. The
 `HazelcastInstance` is automatically wrapped in a `CacheManager` implementation if
 caching is enabled.
+
+
+
+[[boot-features-quartz]]
+== Quartz Scheduler
+Spring Boot offers several conveniences for working with the Quartz scheduler, including
+the `spring-boot-starter-quartz` '`Starter`'. If Quartz is available, a `Scheduler` will
+be auto-configured (via the `SchedulerFactoryBean` abstraction).
+
+Beans of the following types will be automatically picked up and associated with the
+the `Scheduler`:
+
+* `JobDetail`: defines a particular Job. `JobDetail` instance can easily be built with
+the `JobBuilder` API
+* `Calendar`
+* `Trigger`: defines when a particular job is triggered
+
+By default, an in-memory `JobStore` will be used. However, it is possible to configure
+a JDBC-based store if a `DataSource` bean is available in your application and if the
+`spring.quartz.job-store-type` property is configured accordingly:
+
+[source,properties,indent=0]
+----
+	spring.quartz.job-store-type=jdbc
+----
+
+When the jdbc store is used, the schema can be initialized on startup:
+
+[source,properties,indent=0]
+----
+	spring.quartz.jdbc.initialize-schema=true
+----
+
+NOTE: The database is detected by default and initialized using the standard scripts
+provided with the Quartz library. It is also possible to provide a custom script using the
+`spring.quartz.jdbc.schema` property.
+
+Quartz Scheduler configuration can be customized using Quartz configuration properties (see
+`spring.quartz.properties.*`) and `SchedulerFactoryBeanCustomizer` beans which allows
+programmatic `SchedulerFactoryBean` customization.
+
+Job can define setters to inject data map properties. Regular beans can also be injected
+in a similar manner:
+
+[source,java,indent=0]
+----
+	public class SampleJob extends QuartzJobBean {
+
+		private MyService myService;
+		private String name;
+
+		// Inject "MyService" bean
+		public void setMyService(MyService myService) { ... }
+
+		// Inject the "name" job data property
+		public void setName(String name) { ... }
+
+		@Override
+		protected void executeInternal(JobExecutionContext context)
+				throws JobExecutionException {
+			...
+		}
+
+	}
+----
 
 
 
@@ -5722,6 +5844,43 @@ A list of the auto-configuration that is enabled by `@JdbcTest` can be
 
 
 
+[[boot-features-testing-spring-boot-applications-testing-autoconfigured-jooq-test]]
+==== Auto-configured jOOQ tests
+`@JooqTest` can be used in a similar fashion as `@JdbcTest` but for jOOQ related tests. As
+jOOQ relies heavily on a Java-based schema that corresponds with the database schema, the
+existing `DataSource` will be used. If you want to replace it by an in-memory database you
+can use `@AutoconfigureTestDatabase` to override those settings.
+
+`@JooqTest` will configure a `DSLContext`. Regular `@Component` beans will not be loaded
+into the `ApplicationContext`:
+
+[source,java,indent=0]
+----
+	import org.jooq.DSLContext;
+	import org.junit.Test;
+	import org.junit.runner.RunWith;
+	import org.springframework.boot.test.autoconfigure.jooq.JooqTest;
+	import org.springframework.test.context.junit4.SpringRunner;
+
+	@RunWith(SpringRunner.class)
+	@JooqTest
+	public class ExampleJooqTests {
+
+		@Autowired
+		private DSLContext dslContext;
+	}
+----
+
+JOOQ tests are transactional and rollback at the end of each test by default. If that's
+not what you want, you can disable transaction management for a test or for the whole test
+class as <<boot-features-testing-spring-boot-applications-testing-autoconfigured-jdbc-test,shown
+in the example above>>.
+
+A list of the auto-configuration that is enabled by `@JooqTest` can be
+<<appendix-test-auto-configuration#test-auto-configuration,found in the appendix>>.
+
+
+
 [[boot-features-testing-spring-boot-applications-testing-autoconfigured-mongo-test]]
 ==== Auto-configured Data MongoDB tests
 `@DataMongoTest` can be used if you want to test MongoDB applications. By default, it will
@@ -5993,27 +6152,10 @@ automatically generate the default snippets:
 ==== Using Spock to test Spring Boot applications
 If you wish to use Spock to test a Spring Boot application you should add a dependency
 on Spock's `spock-spring` module to your application's build. `spock-spring` integrates
-Spring's test framework into Spock. Exactly how you can use Spock to test a Spring Boot
-application depends on the version of Spock that you are using.
-
-NOTE: Spring Boot provides dependency management for Spock 1.0. If you wish to use Spock
-1.1 you should <<howto.adoc#howto-customize-dependency-versions,override the
-`spock.version` property>> in your `build.gradle` or `pom.xml` file.
-
-When using Spock 1.1, the annotations <<boot-features-testing-spring-boot-applications,
-described above>> can only be used and you can annotate your `Specification` with
-`@SpringBootTest` to suit the needs of your tests.
-
-When using Spock 1.0, `@SpringBootTest` will not work for a web project. You need to use
-`@SpringApplicationConfiguration` and `@WebIntegrationTest(randomPort = true)`. Being
-unable to use `@SpringBootTest` means that you also lose the auto-configured
-`TestRestTemplate` bean. You can create an equivalent bean yourself using the following
-configuration:
-
-[source,java,indent=0]
-----
-include::{code-examples}/test/spock/SpockTestRestTemplateExample.java[tag=test-rest-template-configuration]
-----
+Spring's test framework into Spock. It is recommended that you use Spock 1.1 or later to
+benefit from a number of recent improvements to Spock's Spring Framework and Spring Boot
+integration. Please refer to http://spockframework.org/spock/docs/1.1/modules.html[the
+documentation for Spock's Spring module] for further details.
 
 
 
@@ -6275,10 +6417,28 @@ attribute to specify beans by type, or `name` to specify beans by name. The `sea
 attribute allows you to limit the `ApplicationContext` hierarchy that should be considered
 when searching for beans.
 
+When placed on a `@Bean` method, the target type defaults to the return type of the
+method, for instance:
+
+[source,java,indent=0]
+----
+	@Configuration
+	public class MyAutoConfiguration {
+
+		@Bean
+		@ConditionalOnMissingBean
+		public MyService myService() { ... }
+
+	}
+----
+
+In the example above, the `myService` bean is going to be created if no bean of type
+`MyService` is already contained in the `ApplicationContext`.
+
 TIP: You need to be very careful about the order that bean definitions are added as these
 conditions are evaluated based on what has been processed so far. For this reason,
 we recommend only using `@ConditionalOnBean` and `@ConditionalOnMissingBean` annotations
-on auto-configuration classes (since these are guaranteed to load after any user-define
+on auto-configuration classes (since these are guaranteed to load after any user-defined
 beans definitions have been added).
 
 NOTE: `@ConditionalOnBean` and `@ConditionalOnMissingBean` do not prevent `@Configuration`

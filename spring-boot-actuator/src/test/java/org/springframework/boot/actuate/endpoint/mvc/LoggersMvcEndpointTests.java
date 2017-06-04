@@ -64,6 +64,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Ben Hale
  * @author Phillip Webb
  * @author Eddú Meléndez
+ * @author Stephane Nicoll
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest
@@ -150,7 +151,8 @@ public class LoggersMvcEndpointTests {
 	@Test
 	public void setLoggerUsingApplicationJsonShouldSetLogLevel() throws Exception {
 		this.mvc.perform(post(PATH + "/ROOT").contentType(MediaType.APPLICATION_JSON)
-				.content("{\"configuredLevel\":\"debug\"}")).andExpect(status().isOk());
+				.content("{\"configuredLevel\":\"debug\"}"))
+				.andExpect(status().isNoContent());
 		verify(this.loggingSystem).setLogLevel("ROOT", LogLevel.DEBUG);
 	}
 
@@ -158,7 +160,8 @@ public class LoggersMvcEndpointTests {
 	public void setLoggerUsingActuatorV2JsonShouldSetLogLevel() throws Exception {
 		this.mvc.perform(post(PATH + "/ROOT")
 				.contentType(ActuatorMediaTypes.APPLICATION_ACTUATOR_V2_JSON)
-				.content("{\"configuredLevel\":\"debug\"}")).andExpect(status().isOk());
+				.content("{\"configuredLevel\":\"debug\"}"))
+				.andExpect(status().isNoContent());
 		verify(this.loggingSystem).setLogLevel("ROOT", LogLevel.DEBUG);
 	}
 
@@ -177,6 +180,21 @@ public class LoggersMvcEndpointTests {
 				.content("{\"configuredLevel\":\"other\"}"))
 				.andExpect(status().is4xxClientError());
 		verifyZeroInteractions(this.loggingSystem);
+	}
+
+	@Test
+	public void setLoggerWithNullLogLevel() throws Exception {
+		this.mvc.perform(post(PATH + "/ROOT").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"configuredLevel\": null}"))
+				.andExpect(status().isNoContent());
+		verify(this.loggingSystem).setLogLevel("ROOT", null);
+	}
+
+	@Test
+	public void setLoggerWithNoLogLevel() throws Exception {
+		this.mvc.perform(post(PATH + "/ROOT").contentType(MediaType.APPLICATION_JSON)
+				.content("{}")).andExpect(status().isNoContent());
+		verify(this.loggingSystem).setLogLevel("ROOT", null);
 	}
 
 	@Test

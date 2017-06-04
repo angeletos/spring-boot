@@ -106,7 +106,7 @@ content into your application; rather pick only the properties that you need.
 	# APPLICATION SETTINGS ({sc-spring-boot}/SpringApplication.{sc-ext}[SpringApplication])
 	spring.main.banner-mode=console # Mode used to display the banner when the application runs.
 	spring.main.sources= # Sources (class name, package name or XML resource location) to include in the ApplicationContext.
-	spring.main.web-environment= # Run the application in a web environment (auto-detected by default).
+	spring.main.web-application-type= # Flag to explicitly request a specific type of web application. Auto-detected based on the classpath if not set.
 
 	# FILE ENCODING ({sc-spring-boot}/context/FileEncodingApplicationListener.{sc-ext}[FileEncodingApplicationListener])
 	spring.mandatory-file-encoding= # Expected character encoding the application must use.
@@ -129,13 +129,17 @@ content into your application; rather pick only the properties that you need.
 	spring.profiles.active= # Comma-separated list (or list if using YAML) of <<howto-set-active-spring-profiles,active profiles>>.
 	spring.profiles.include= # Unconditionally activate the specified comma separated profiles (or list of profiles if using YAML).
 
+	# QUARTZ SCHEDULER ({sc-spring-boot-autoconfigure}/quartz/QuartzProperties.{sc-ext}[QuartzProperties])
+	spring.quartz.job-store-type=memory # Quartz job store type.
+	spring.quartz.properties.*= # Additional Quartz Scheduler properties.
+	spring.quartz.jdbc.initialize-schema=false # Create the required Quartz Scheduler tables on startup.
+	spring.quartz.jdbc.schema=classpath:org/quartz/impl/jdbcjobstore/tables_@@platform@@.sql # Path to the SQL file to use to initialize the database schema.
+
 	# Reactor
 	spring.reactor.stacktrace-mode.enabled=false # Set whether Reactor should collect stacktrace information at runtime.
 
 	# SENDGRID ({sc-spring-boot-autoconfigure}/sendgrid/SendGridAutoConfiguration.{sc-ext}[SendGridAutoConfiguration])
 	spring.sendgrid.api-key= # SendGrid api key (alternative to username/password)
-	spring.sendgrid.username= # SendGrid account username
-	spring.sendgrid.password= # SendGrid account password
 	spring.sendgrid.proxy.host= # SendGrid proxy host
 	spring.sendgrid.proxy.port= # SendGrid proxy port
 
@@ -248,6 +252,7 @@ content into your application; rather pick only the properties that you need.
 	server.undertow.buffer-size= # Size of each buffer in bytes.
 	server.undertow.direct-buffers= # Allocate buffers outside the Java heap.
 	server.undertow.io-threads= # Number of I/O threads to create for the worker.
+	server.undertow.eager-filter-init=true # Whether servlet filters should be initialized on startup.
 	server.undertow.max-http-post-size=0 # Maximum size in bytes of the HTTP post content.
 	server.undertow.worker-threads= # Number of worker threads.
 
@@ -294,7 +299,7 @@ content into your application; rather pick only the properties that you need.
 	# HTTP message conversion
 	spring.http.converters.preferred-json-mapper=jackson # Preferred JSON mapper to use for HTTP message conversion. Set to "gson" to force the use of Gson when both it and Jackson are on the classpath.
 
-	# HTTP encoding ({sc-spring-boot-autoconfigure}/web/HttpEncodingProperties.{sc-ext}[HttpEncodingProperties])
+	# HTTP encoding ({sc-spring-boot-autoconfigure}/http/HttpEncodingProperties.{sc-ext}[HttpEncodingProperties])
 	spring.http.encoding.charset=UTF-8 # Charset of HTTP requests and responses. Added to the "Content-Type" header if not set explicitly.
 	spring.http.encoding.enabled=true # Enable http encoding support.
 	spring.http.encoding.force= # Force the encoding to the configured charset on HTTP requests and responses.
@@ -302,13 +307,13 @@ content into your application; rather pick only the properties that you need.
 	spring.http.encoding.force-response= # Force the encoding to the configured charset on HTTP responses.
 	spring.http.encoding.mapping= # Locale to Encoding mapping.
 
-	# MULTIPART ({sc-spring-boot-autoconfigure}/web/MultipartProperties.{sc-ext}[MultipartProperties])
-	spring.http.multipart.enabled=true # Enable support of multi-part uploads.
-	spring.http.multipart.file-size-threshold=0 # Threshold after which files will be written to disk. Values can use the suffixed "MB" or "KB" to indicate a Megabyte or Kilobyte size.
-	spring.http.multipart.location= # Intermediate location of uploaded files.
-	spring.http.multipart.max-file-size=1MB # Max file size. Values can use the suffixed "MB" or "KB" to indicate a Megabyte or Kilobyte size.
-	spring.http.multipart.max-request-size=10MB # Max request size. Values can use the suffixed "MB" or "KB" to indicate a Megabyte or Kilobyte size.
-	spring.http.multipart.resolve-lazily=false # Whether to resolve the multipart request lazily at the time of file or parameter access.
+	# MULTIPART ({sc-spring-boot-autoconfigure}/web/servlet/MultipartProperties.{sc-ext}[MultipartProperties])
+	spring.servlet.multipart.enabled=true # Enable support of multipart uploads.
+	spring.servlet.multipart.file-size-threshold=0 # Threshold after which files will be written to disk. Values can use the suffixes "MB" or "KB" to indicate megabytes or kilobytes respectively.
+	spring.servlet.multipart.location= # Intermediate location of uploaded files.
+	spring.servlet.multipart.max-file-size=1MB # Max file size. Values can use the suffixes "MB" or "KB" to indicate megabytes or kilobytes respectively.
+	spring.servlet.multipart.max-request-size=10MB # Max request size. Values can use the suffixes "MB" or "KB" to indicate megabytes or kilobytes respectively.
+	spring.servlet.multipart.resolve-lazily=false # Whether to resolve the multipart request lazily at the time of file or parameter access.
 
 	# JACKSON ({sc-spring-boot-autoconfigure}/jackson/JacksonProperties.{sc-ext}[JacksonProperties])
 	spring.jackson.date-format= # Date format string or a fully-qualified date format class name. For instance `yyyy-MM-dd HH:mm:ss`.
@@ -375,7 +380,7 @@ content into your application; rather pick only the properties that you need.
 	spring.mustache.suffix=.mustache # Suffix to apply to template names.
 	spring.mustache.view-names= # White list of view names that can be resolved.
 
-	# SPRING MVC ({sc-spring-boot-autoconfigure}/web/WebMvcProperties.{sc-ext}[WebMvcProperties])
+	# SPRING MVC ({sc-spring-boot-autoconfigure}/web/servlet/WebMvcProperties.{sc-ext}[WebMvcProperties])
 	spring.mvc.async.request-timeout= # Amount of time (in milliseconds) before asynchronous request handling times out.
 	spring.mvc.date-format= # Date format to use. For instance `dd/MM/yyyy`.
 	spring.mvc.dispatch-trace-request=false # Dispatch TRACE requests to the FrameworkServlet doService method.
@@ -443,7 +448,7 @@ content into your application; rather pick only the properties that you need.
 	spring.thymeleaf.mode=HTML5 # Template mode to be applied to templates. See also StandardTemplateModeHandlers.
 	spring.thymeleaf.prefix=classpath:/templates/ # Prefix that gets prepended to view names when building a URL.
 	spring.thymeleaf.reactive.max-chunk-size= # Maximum size of data buffers used for writing to the response, in bytes.
-	spring.thymeleaf.reactive.media-types=text/html # Media types supported by the view technology.
+	spring.thymeleaf.reactive.media-types= # Media types supported by the view technology.
 	spring.thymeleaf.servlet.content-type=text/html # Content-Type value written to HTTP responses.
 	spring.thymeleaf.suffix=.html # Suffix that gets appended to view names when building a URL.
 	spring.thymeleaf.template-resolver-order= # Order of the template resolver in the chain.
@@ -583,10 +588,17 @@ content into your application; rather pick only the properties that you need.
 	spring.data.cassandra.consistency-level= # Queries consistency level.
 	spring.data.cassandra.contact-points=localhost # Comma-separated list of cluster node addresses.
 	spring.data.cassandra.fetch-size= # Queries default fetch size.
+	spring.data.cassandra.heartbeat-interval-seconds= # Pooling option: heartbeat interval.
 	spring.data.cassandra.keyspace-name= # Keyspace name to use.
 	spring.data.cassandra.load-balancing-policy= # Class name of the load balancing policy.
+	spring.data.cassandra.max-requests-per-connection.*= # Pooling option: max requests per connection.
+	spring.data.cassandra.max-queue-size= # Pooling option: max queue size.
 	spring.data.cassandra.port= # Port of the Cassandra server.
 	spring.data.cassandra.password= # Login password of the server.
+	spring.data.cassandra.pool.heartbeat-interval=30 # Heartbeat interval (in seconds) after which a message is sent on an idle connection to make sure it's still alive.
+	spring.data.cassandra.pool.idle-timeout=120 # Idle timeout (in seconds) before an idle connection is removed.
+	spring.data.cassandra.pool.max-queue-size=256 # Maximum number of requests that get enqueued if no connection is available.
+	spring.data.cassandra.pool.pool-timeout=5000 # Pool timeout (in milliseconds) when trying to acquire a connection from a host's pool.
 	spring.data.cassandra.reactive-repositories.enabled=true # Enable Cassandra reactive repositories.
 	spring.data.cassandra.read-timeout-millis= # Socket option: read time out.
 	spring.data.cassandra.reconnection-policy= # Reconnection policy class.
@@ -653,6 +665,12 @@ content into your application; rather pick only the properties that you need.
 	spring.data.solr.repositories.enabled=true # Enable Solr repositories.
 	spring.data.solr.zk-host= # ZooKeeper host address in the form HOST:PORT.
 
+	# DATA WEB ({sc-spring-boot-autoconfigure}/data/web/SpringDataWebProperties.{sc-ext}[SpringDataWebProperties])
+	spring.data.web.pageable.default-page-size=20 # Default page size.
+	spring.data.web.pageable.page-parameter=page # Page index parameter name.
+	spring.data.web.pageable.size-parameter=size # Page size parameter name.
+	spring.data.web.sort.sort-parameter=sort # Sort parameter name.
+
 	# DATASOURCE ({sc-spring-boot-autoconfigure}/jdbc/DataSourceAutoConfiguration.{sc-ext}[DataSourceAutoConfiguration] & {sc-spring-boot-autoconfigure}/jdbc/DataSourceProperties.{sc-ext}[DataSourceProperties])
 	spring.datasource.continue-on-error=false # Do not stop if an error occurs while initializing the database.
 	spring.datasource.data= # Data (DML) script resource references.
@@ -696,8 +714,18 @@ content into your application; rather pick only the properties that you need.
 	spring.h2.console.settings.trace=false # Enable trace output.
 	spring.h2.console.settings.web-allow-others=false # Enable remote access.
 
+	# InfluxDB ({sc-spring-boot-autoconfigure}/influx/InfluxProperties.{sc-ext}[InfluxProperties])
+	spring.influx.client.password= # Login password.
+	spring.influx.client.url= # Url of the InfluxDB instance to connect to.
+	spring.influx.client.user= # Login user.
+
 	# JOOQ ({sc-spring-boot-autoconfigure}/jooq/JooqAutoConfiguration.{sc-ext}[JooqAutoConfiguration])
-	spring.jooq.sql-dialect= # SQLDialect JOOQ used when communicating with the configured datasource. For instance `POSTGRES`
+	spring.jooq.sql-dialect= # Sql dialect to use, auto-detected by default.
+
+	# JDBC ({sc-spring-boot-autoconfigure}/jdbc/JdbcProperties.{sc-ext}[JdbcProperties])
+	spring.jdbc.template.fetch-size=-1 # Number of rows that should be fetched from the database when more rows are needed.
+	spring.jdbc.template.max-rows=-1 # Maximum number of rows.
+	spring.jdbc.template.query-timeout=-1 # Query timeout in seconds.
 
 	# JPA ({sc-spring-boot-autoconfigure}/orm/jpa/JpaBaseConfiguration.{sc-ext}[JpaBaseConfiguration], {sc-spring-boot-autoconfigure}/orm/jpa/HibernateJpaAutoConfiguration.{sc-ext}[HibernateJpaAutoConfiguration])
 	spring.data.jpa.repositories.enabled=true # Enable JPA repositories.
@@ -739,11 +767,8 @@ content into your application; rather pick only the properties that you need.
 	spring.jta.atomikos.datasource.reap-timeout=0 # The reap timeout, in seconds, for borrowed connections. 0 denotes no limit.
 	spring.jta.atomikos.datasource.test-query= # SQL query or statement used to validate a connection before returning it.
 	spring.jta.atomikos.datasource.unique-resource-name=dataSource # The unique name used to identify the resource during recovery.
+	spring.jta.atomikos.properties.allow-sub-transactions=true # Specify if sub-transactions are allowed.
 	spring.jta.atomikos.properties.checkpoint-interval=500 # Interval between checkpoints.
-	spring.jta.atomikos.properties.console-file-count=1 # Number of debug logs files that can be created.
-	spring.jta.atomikos.properties.console-file-limit=-1 # How many bytes can be stored at most in debug logs files.
-	spring.jta.atomikos.properties.console-file-name=tm.out # Debug logs file name.
-	spring.jta.atomikos.properties.console-log-level=warn # Console log level.
 	spring.jta.atomikos.properties.default-jta-timeout=10000 # Default timeout for JTA transactions.
 	spring.jta.atomikos.properties.enable-logging=true # Enable disk logging.
 	spring.jta.atomikos.properties.force-shutdown-on-vm-exit=false # Specify if a VM shutdown should trigger forced shutdown of the transaction core.
@@ -751,10 +776,13 @@ content into your application; rather pick only the properties that you need.
 	spring.jta.atomikos.properties.log-base-name=tmlog # Transactions log file base name.
 	spring.jta.atomikos.properties.max-actives=50 # Maximum number of active transactions.
 	spring.jta.atomikos.properties.max-timeout=300000 # Maximum timeout (in milliseconds) that can be allowed for transactions.
-	spring.jta.atomikos.properties.output-dir= # Directory in which to store the debug log files.
+	spring.jta.atomikos.properties.recovery.delay=10000 # Delay between two recovery scans.
+	spring.jta.atomikos.properties.recovery.forget-orphaned-log-entries-delay=86400000 # Delay after which recovery can cleanup pending ('orphaned') log entries.
+	spring.jta.atomikos.properties.recovery.max-retries=5 # Number of retries attempts to commit the transaction before throwing an exception.
+	spring.jta.atomikos.properties.recovery.retry-interval=10000 # Delay between retry attempts.
 	spring.jta.atomikos.properties.serial-jta-transactions=true # Specify if sub-transactions should be joined when possible.
 	spring.jta.atomikos.properties.service= # Transaction manager implementation that should be started.
-	spring.jta.atomikos.properties.threaded-two-phase-commit=true # Use different (and concurrent) threads for two-phase commit on the participating resources.
+	spring.jta.atomikos.properties.threaded-two-phase-commit=false # Use different (and concurrent) threads for two-phase commit on the participating resources.
 	spring.jta.atomikos.properties.transaction-manager-unique-name= # Transaction manager's unique name.
 
 	# BITRONIX
@@ -850,15 +878,20 @@ content into your application; rather pick only the properties that you need.
 	spring.redis.database=0 # Database index used by the connection factory.
 	spring.redis.url= # Connection URL, will override host, port and password (user will be ignored), e.g. redis://user:password@example.com:6379
 	spring.redis.host=localhost # Redis server host.
+	spring.redis.jedis.pool.max-active=8 # Max number of connections that can be allocated by the pool at a given time. Use a negative value for no limit.
+	spring.redis.jedis.pool.max-idle=8 # Max number of "idle" connections in the pool. Use a negative value to indicate an unlimited number of idle connections.
+	spring.redis.jedis.pool.max-wait=-1 # Maximum amount of time (in milliseconds) a connection allocation should block before throwing an exception when the pool is exhausted. Use a negative value to block indefinitely.
+	spring.redis.jedis.pool.min-idle=0 # Target for the minimum number of idle connections to maintain in the pool. This setting only has an effect if it is positive.
+	spring.redis.lettuce.pool.max-active=8 # Max number of connections that can be allocated by the pool at a given time. Use a negative value for no limit.
+	spring.redis.lettuce.pool.max-idle=8 # Max number of "idle" connections in the pool. Use a negative value to indicate an unlimited number of idle connections.
+	spring.redis.lettuce.pool.max-wait=-1 # Maximum amount of time (in milliseconds) a connection allocation should block before throwing an exception when the pool is exhausted. Use a negative value to block indefinitely.
+	spring.redis.lettuce.pool.min-idle=0 # Target for the minimum number of idle connections to maintain in the pool. This setting only has an effect if it is positive.
+	spring.redis.lettuce.shutdown-timeout=2000 # Shutdown timeout in milliseconds.
 	spring.redis.password= # Login password of the redis server.
-	spring.redis.ssl=false # Enable SSL support.
-	spring.redis.pool.max-active=8 # Max number of connections that can be allocated by the pool at a given time. Use a negative value for no limit.
-	spring.redis.pool.max-idle=8 # Max number of "idle" connections in the pool. Use a negative value to indicate an unlimited number of idle connections.
-	spring.redis.pool.max-wait=-1 # Maximum amount of time (in milliseconds) a connection allocation should block before throwing an exception when the pool is exhausted. Use a negative value to block indefinitely.
-	spring.redis.pool.min-idle=0 # Target for the minimum number of idle connections to maintain in the pool. This setting only has an effect if it is positive.
 	spring.redis.port=6379 # Redis server port.
 	spring.redis.sentinel.master= # Name of Redis server.
 	spring.redis.sentinel.nodes= # Comma-separated list of host:port pairs.
+	spring.redis.ssl=false # Enable SSL support.
 	spring.redis.timeout=0 # Connection timeout in milliseconds.
 
 	# TRANSACTION ({sc-spring-boot-autoconfigure}/transaction/TransactionProperties.{sc-ext}[TransactionProperties])
@@ -938,7 +971,16 @@ content into your application; rather pick only the properties that you need.
 	spring.kafka.consumer.heartbeat-interval= # Expected time in milliseconds between heartbeats to the consumer coordinator.
 	spring.kafka.consumer.key-deserializer= # Deserializer class for keys.
 	spring.kafka.consumer.max-poll-records= # Maximum number of records returned in a single call to poll().
+	spring.kafka.consumer.ssl.key-password= # Password of the private key in the key store file.
+	spring.kafka.consumer.ssl.keystore-location= # Location of the key store file.
+	spring.kafka.consumer.ssl.keystore-password= # Store password for the key store file.
+	spring.kafka.consumer.ssl.truststore-location= # Location of the trust store file.
+	spring.kafka.consumer.ssl.truststore-password= # Store password for the trust store file.
 	spring.kafka.consumer.value-deserializer= # Deserializer class for values.
+	spring.kafka.jaas.control-flag=required # Control flag for login configuration.
+	spring.kafka.jaas.enabled= # Enable JAAS configuration.
+	spring.kafka.jaas.login-module=com.sun.security.auth.module.Krb5LoginModule # Login module.
+	spring.kafka.jaas.options= # Additional JAAS options.
 	spring.kafka.listener.ack-count= # Number of records between offset commits when ackMode is "COUNT" or "COUNT_TIME".
 	spring.kafka.listener.ack-mode= # Listener AckMode; see the spring-kafka documentation.
 	spring.kafka.listener.ack-time= # Time in milliseconds between offset commits when ackMode is "TIME" or "COUNT_TIME".
@@ -952,6 +994,11 @@ content into your application; rather pick only the properties that you need.
 	spring.kafka.producer.compression-type= # Compression type for all data generated by the producer.
 	spring.kafka.producer.key-serializer= # Serializer class for keys.
 	spring.kafka.producer.retries= # When greater than zero, enables retrying of failed sends.
+	spring.kafka.producer.ssl.key-password= # Password of the private key in the key store file.
+	spring.kafka.producer.ssl.keystore-location= # Location of the key store file.
+	spring.kafka.producer.ssl.keystore-password= # Store password for the key store file.
+	spring.kafka.producer.ssl.truststore-location= # Location of the trust store file.
+	spring.kafka.producer.ssl.truststore-password= # Store password for the trust store file.
 	spring.kafka.producer.value-serializer= # Serializer class for values.
 	spring.kafka.properties.*= # Additional properties used to configure the client.
 	spring.kafka.ssl.key-password= # Password of the private key in the key store file.
@@ -970,20 +1017,27 @@ content into your application; rather pick only the properties that you need.
 	spring.rabbitmq.connection-timeout= # Connection timeout, in milliseconds; zero for infinite.
 	spring.rabbitmq.dynamic=true # Create an AmqpAdmin bean.
 	spring.rabbitmq.host=localhost # RabbitMQ host.
-	spring.rabbitmq.listener.acknowledge-mode= # Acknowledge mode of container.
-	spring.rabbitmq.listener.auto-startup=true # Start the container automatically on startup.
-	spring.rabbitmq.listener.concurrency= # Minimum number of consumers.
-	spring.rabbitmq.listener.default-requeue-rejected= # Whether or not to requeue delivery failures; default `true`.
-	spring.rabbitmq.listener.idle-event-interval= # How often idle container events should be published in milliseconds.
-	spring.rabbitmq.listener.max-concurrency= # Maximum number of consumers.
-	spring.rabbitmq.listener.prefetch= # Number of messages to be handled in a single request. It should be greater than or equal to the transaction size (if used).
-	spring.rabbitmq.listener.retry.enabled=false # Whether or not publishing retries are enabled.
-	spring.rabbitmq.listener.retry.initial-interval=1000 # Interval between the first and second attempt to deliver a message.
-	spring.rabbitmq.listener.retry.max-attempts=3 # Maximum number of attempts to deliver a message.
-	spring.rabbitmq.listener.retry.max-interval=10000 # Maximum interval between attempts.
-	spring.rabbitmq.listener.retry.multiplier=1.0 # A multiplier to apply to the previous delivery retry interval.
-	spring.rabbitmq.listener.retry.stateless=true # Whether or not retry is stateless or stateful.
-	spring.rabbitmq.listener.transaction-size= # Number of messages to be processed in a transaction. For best results it should be less than or equal to the prefetch count.
+	spring.rabbitmq.listener.direct.acknowledge-mode= # Acknowledge mode of container.
+	spring.rabbitmq.listener.direct.auto-startup=true # Start the container automatically on startup.
+	spring.rabbitmq.listener.direct.consumers-per-queue= # Number of consumers per queue.
+	spring.rabbitmq.listener.direct.default-requeue-rejected= # Whether rejected deliveries are requeued by default; default true.
+	spring.rabbitmq.listener.direct.idle-event-interval= # How often idle container events should be published in milliseconds.
+	spring.rabbitmq.listener.direct.prefetch= # Number of messages to be handled in a single request. It should be greater than or equal to the transaction size (if used).
+	spring.rabbitmq.listener.simple.acknowledge-mode= # Acknowledge mode of container.
+	spring.rabbitmq.listener.simple.auto-startup=true # Start the container automatically on startup.
+	spring.rabbitmq.listener.simple.concurrency= # Minimum number of listener invoker threads.
+	spring.rabbitmq.listener.simple.default-requeue-rejected= # Whether or not to requeue delivery failures.
+	spring.rabbitmq.listener.simple.idle-event-interval= # How often idle container events should be published in milliseconds.
+	spring.rabbitmq.listener.simple.max-concurrency= # Maximum number of listener invoker.
+	spring.rabbitmq.listener.simple.prefetch= # Number of messages to be handled in a single request. It should be greater than or equal to the transaction size (if used).
+	spring.rabbitmq.listener.simple.retry.enabled=false # Whether or not publishing retries are enabled.
+	spring.rabbitmq.listener.simple.retry.initial-interval=1000 # Interval between the first and second attempt to deliver a message.
+	spring.rabbitmq.listener.simple.retry.max-attempts=3 # Maximum number of attempts to deliver a message.
+	spring.rabbitmq.listener.simple.retry.max-interval=10000 # Maximum interval between attempts.
+	spring.rabbitmq.listener.simple.retry.multiplier=1.0 # A multiplier to apply to the previous delivery retry interval.
+	spring.rabbitmq.listener.simple.retry.stateless=true # Whether or not retry is stateless or stateful.
+	spring.rabbitmq.listener.simple.transaction-size= # Number of messages to be processed in a transaction; number of messages between acks. For best results it should be less than or equal to the prefetch count.
+	spring.rabbitmq.listener.type=simple # Listener container type.
 	spring.rabbitmq.password= # Login to authenticate against the broker.
 	spring.rabbitmq.port=5672 # RabbitMQ port.
 	spring.rabbitmq.publisher-confirms=false # Enable publisher confirms.

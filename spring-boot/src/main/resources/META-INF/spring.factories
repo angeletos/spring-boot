@@ -33,13 +33,16 @@ org.springframework.boot.liquibase.LiquibaseServiceLocatorApplicationListener
 # Environment Post Processors
 org.springframework.boot.env.EnvironmentPostProcessor=\
 org.springframework.boot.cloud.CloudFoundryVcapEnvironmentPostProcessor,\
-org.springframework.boot.env.SpringApplicationJsonEnvironmentPostProcessor
+org.springframework.boot.env.SpringApplicationJsonEnvironmentPostProcessor,\
+org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor
 
 # Failure Analyzers
 org.springframework.boot.diagnostics.FailureAnalyzer=\
 org.springframework.boot.diagnostics.analyzer.BeanCurrentlyInCreationFailureAnalyzer,\
 org.springframework.boot.diagnostics.analyzer.BeanNotOfRequiredTypeFailureAnalyzer,\
 org.springframework.boot.diagnostics.analyzer.BindFailureAnalyzer,\
+org.springframework.boot.diagnostics.analyzer.BindValidationFailureAnalyzer,\
+org.springframework.boot.diagnostics.analyzer.UnboundConfigurationPropertyFailureAnalyzer,\
 org.springframework.boot.diagnostics.analyzer.ConnectorStartFailureAnalyzer,\
 org.springframework.boot.diagnostics.analyzer.NoUniqueBeanDefinitionFailureAnalyzer,\
 org.springframework.boot.diagnostics.analyzer.PortInUseFailureAnalyzer,\

@@ -326,6 +326,10 @@
     "defaultValue": true
   },
   {
+    "name": "spring.kafka.jaas.control-flag",
+    "defaultValue": "required"
+  },
+  {
     "name": "spring.mobile.devicedelegatingviewresolver.enabled",
     "type": "java.lang.Boolean",
     "description": "Enable device view resolver.",
@@ -352,6 +356,10 @@
   {
     "name": "spring.mvc.locale-resolver",
     "defaultValue": "accept-header"
+  },
+  {
+    "name": "spring.quartz.job-store-type",
+    "defaultValue": "memory"
   },
   {
     "name": "spring.rabbitmq.cache.connection.mode",

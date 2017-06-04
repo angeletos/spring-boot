@@ -16,6 +16,7 @@
 
 package org.springframework.boot.actuate.endpoint.mvc;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,13 +32,14 @@ import org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConf
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.MutablePropertySources;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
@@ -74,8 +76,8 @@ public class EnvironmentMvcEndpointTests {
 	public void setUp() {
 		this.context.getBean(EnvironmentEndpoint.class).setEnabled(true);
 		this.mvc = MockMvcBuilders.webAppContextSetup(this.context).build();
-		EnvironmentTestUtils.addEnvironment((ConfigurableApplicationContext) this.context,
-				"foo:bar", "fool:baz");
+		TestPropertyValues.of("foo:bar", "fool:baz")
+				.applyTo((ConfigurableApplicationContext) this.context);
 	}
 
 	@Test
@@ -87,9 +89,9 @@ public class EnvironmentMvcEndpointTests {
 
 	@Test
 	public void homeContentTypeCanBeApplicationJson() throws Exception {
-		this.mvc.perform(
-				get("/application/env").header(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE))
-				.andExpect(status().isOk()).andExpect(header().string("Content-Type",
+		this.mvc.perform(get("/application/env").header(HttpHeaders.ACCEPT,
+				MediaType.APPLICATION_JSON_VALUE)).andExpect(status().isOk())
+				.andExpect(header().string("Content-Type",
 						MediaType.APPLICATION_JSON_UTF8_VALUE));
 	}
 
@@ -157,6 +159,17 @@ public class EnvironmentMvcEndpointTests {
 				.addFirst(new MapPropertySource("placeholder", map));
 		this.mvc.perform(get("/application/env/my.*")).andExpect(status().isOk())
 				.andExpect(content().string(containsString("\"my.foo\":\"******\"")));
+	}
+
+	@Test
+	public void propertyWithTypeOtherThanStringShouldNotFail() throws Exception {
+		MutablePropertySources propertySources = ((ConfigurableEnvironment) this.context
+				.getEnvironment()).getPropertySources();
+		Map<String, Object> source = new HashMap<String, Object>();
+		source.put("foo", Collections.singletonMap("bar", "baz"));
+		propertySources.addFirst(new MapPropertySource("test", source));
+		this.mvc.perform(get("/application/env/foo.*")).andExpect(status().isOk())
+				.andExpect(content().string("{\"foo\":{\"bar\":\"baz\"}}"));
 	}
 
 	@Configuration

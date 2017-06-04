@@ -35,7 +35,7 @@ import org.thymeleaf.templateresolver.ITemplateResolver;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.test.rule.OutputCapture;
-import org.springframework.boot.test.util.EnvironmentTestUtils;
+import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.boot.web.reactive.context.GenericReactiveWebApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,7 +68,7 @@ public class ThymeleafReactiveAutoConfigurationTests {
 
 	@Test
 	public void createFromConfigClass() throws Exception {
-		load(BaseConfiguration.class, "spring.thymeleaf.suffix:.txt");
+		load(BaseConfiguration.class, "spring.thymeleaf.suffix:.html");
 		TemplateEngine engine = this.context.getBean(TemplateEngine.class);
 		Context attrs = new Context(Locale.UK, Collections.singletonMap("foo", "bar"));
 		String result = engine.process("template", attrs);
@@ -167,7 +167,7 @@ public class ThymeleafReactiveAutoConfigurationTests {
 
 	private void load(Class<?> config, String... envVariables) {
 		this.context = new GenericReactiveWebApplicationContext();
-		EnvironmentTestUtils.addEnvironment(this.context, envVariables);
+		TestPropertyValues.of(envVariables).applyTo(this.context);
 		if (config != null) {
 			this.context.register(config);
 		}

@@ -36,6 +36,7 @@ import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.util.thread.ThreadPool;
 import org.eclipse.jetty.webapp.Configuration;
 import org.eclipse.jetty.webapp.WebAppContext;
@@ -51,6 +52,7 @@ import org.springframework.boot.web.servlet.server.AbstractServletWebServerFacto
 import org.springframework.http.HttpHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -262,8 +264,9 @@ public class JettyServletWebServerFactoryTests
 		JettyServletWebServerFactory factory = getFactory();
 		factory.setThreadPool(null);
 		assertThat(factory.getThreadPool()).isNull();
-		JettyWebServer jettyWebServer = (JettyWebServer) factory.getWebServer();
-		assertThat(jettyWebServer.getServer().getThreadPool()).isNotNull();
+		this.webServer = factory.getWebServer();
+		assertThat(((JettyWebServer) this.webServer).getServer().getThreadPool())
+				.isNotNull();
 	}
 
 	@Test
@@ -271,8 +274,26 @@ public class JettyServletWebServerFactoryTests
 		JettyServletWebServerFactory factory = getFactory();
 		ThreadPool threadPool = mock(ThreadPool.class);
 		factory.setThreadPool(threadPool);
-		JettyWebServer jettyWebServer = (JettyWebServer) factory.getWebServer();
-		assertThat(jettyWebServer.getServer().getThreadPool()).isSameAs(threadPool);
+		this.webServer = factory.getWebServer();
+		assertThat(((JettyWebServer) this.webServer).getServer().getThreadPool())
+				.isSameAs(threadPool);
+	}
+
+	@Test
+	public void startFailsWhenThreadPoolIsTooSmall() throws Exception {
+		JettyServletWebServerFactory factory = getFactory();
+		factory.addServerCustomizers(new JettyServerCustomizer() {
+
+			@Override
+			public void customize(Server server) {
+				QueuedThreadPool threadPool = server.getBean(QueuedThreadPool.class);
+				threadPool.setMaxThreads(2);
+				threadPool.setMinThreads(2);
+			}
+
+		});
+		this.thrown.expectCause(isA(IllegalStateException.class));
+		factory.getWebServer().start();
 	}
 
 	@Override

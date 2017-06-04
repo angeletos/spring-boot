@@ -41,6 +41,7 @@ import org.springframework.boot.configurationsample.incremental.FooProperties;
 import org.springframework.boot.configurationsample.incremental.RenamedBarProperties;
 import org.springframework.boot.configurationsample.lombok.LombokExplicitProperties;
 import org.springframework.boot.configurationsample.lombok.LombokInnerClassProperties;
+import org.springframework.boot.configurationsample.lombok.LombokInnerClassWithGetterProperties;
 import org.springframework.boot.configurationsample.lombok.LombokSimpleDataProperties;
 import org.springframework.boot.configurationsample.lombok.LombokSimpleProperties;
 import org.springframework.boot.configurationsample.lombok.SimpleLombokPojo;
@@ -64,6 +65,7 @@ import org.springframework.boot.configurationsample.specific.DoubleRegistrationP
 import org.springframework.boot.configurationsample.specific.ExcludedTypesPojo;
 import org.springframework.boot.configurationsample.specific.GenericConfig;
 import org.springframework.boot.configurationsample.specific.InnerClassAnnotatedGetterConfig;
+import org.springframework.boot.configurationsample.specific.InnerClassHierarchicalProperties;
 import org.springframework.boot.configurationsample.specific.InnerClassProperties;
 import org.springframework.boot.configurationsample.specific.InnerClassRootConfig;
 import org.springframework.boot.configurationsample.specific.InvalidAccessorProperties;
@@ -348,6 +350,19 @@ public class ConfigurationMetadataAnnotationProcessorTests {
 	}
 
 	@Test
+	public void innerClassPropertiesHierarchical() throws Exception {
+		ConfigurationMetadata metadata = compile(InnerClassHierarchicalProperties.class);
+		assertThat(metadata).has(Metadata.withGroup("config.foo")
+				.ofType(InnerClassHierarchicalProperties.Foo.class));
+		assertThat(metadata).has(Metadata.withGroup("config.foo.bar")
+				.ofType(InnerClassHierarchicalProperties.Bar.class));
+		assertThat(metadata).has(Metadata.withGroup("config.foo.bar.baz")
+				.ofType(InnerClassHierarchicalProperties.Foo.Baz.class));
+		assertThat(metadata).has(Metadata.withProperty("config.foo.bar.baz.blah"));
+		assertThat(metadata).has(Metadata.withProperty("config.foo.bar.bling"));
+	}
+
+	@Test
 	public void innerClassAnnotatedGetterConfig() throws Exception {
 		ConfigurationMetadata metadata = compile(InnerClassAnnotatedGetterConfig.class);
 		assertThat(metadata).has(Metadata.withProperty("specific.value"));
@@ -486,6 +501,20 @@ public class ConfigurationMetadataAnnotationProcessorTests {
 		// containsProperty("config.third.value"));
 		assertThat(metadata).has(Metadata.withProperty("config.fourth"));
 		assertThat(metadata).isNotEqualTo(Metadata.withGroup("config.fourth"));
+	}
+
+	@Test
+	public void lombokInnerClassWithGetterProperties() throws IOException {
+		ConfigurationMetadata metadata = compile(
+				LombokInnerClassWithGetterProperties.class);
+		assertThat(metadata).has(Metadata.withGroup("config")
+				.fromSource(LombokInnerClassWithGetterProperties.class));
+		assertThat(metadata).has(Metadata.withGroup("config.first")
+				.ofType(LombokInnerClassWithGetterProperties.Foo.class)
+				.fromSourceMethod("getFirst()")
+				.fromSource(LombokInnerClassWithGetterProperties.class));
+		assertThat(metadata).has(Metadata.withProperty("config.first.name"));
+		assertThat(metadata.getItems()).hasSize(3);
 	}
 
 	@Test
@@ -786,12 +815,8 @@ public class ConfigurationMetadataAnnotationProcessorTests {
 	}
 
 	private void writeMetadata(File metadataFile, JSONObject metadata) throws Exception {
-		FileWriter writer = new FileWriter(metadataFile);
-		try {
+		try (FileWriter writer = new FileWriter(metadataFile)) {
 			writer.append(metadata.toString(2));
-		}
-		finally {
-			writer.close();
 		}
 	}
 
